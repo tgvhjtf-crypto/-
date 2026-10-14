@@ -525,6 +525,7 @@ jobs:
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 window.attributes = window.attributes.apply {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    preferredRefreshRate = display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f
                 }
                 window.setDecorFitsSystemWindows(false)
                 window.decorView.windowInsetsController?.apply {
