@@ -171,7 +171,19 @@ jobs:
 
             override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
-
+                                val crashPrefs = getSharedPreferences("crash", Context.MODE_PRIVATE)
+                Thread.setDefaultUncaughtExceptionHandler { _, e ->
+                    crashPrefs.edit().putString("log", android.util.Log.getStackTraceString(e)).commit()
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }
+                crashPrefs.getString("log", null)?.let {
+                    crashPrefs.edit().remove("log").apply()
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle("上次崩溃日志")
+                        .setMessage(it.take(4000))
+                        .setPositiveButton("确定", null)
+                        .show()
+                }
                 val b = windowManager.currentWindowMetrics.bounds
                 shortSide = min(b.width(), b.height())
                 baseDpi = resources.displayMetrics.densityDpi
