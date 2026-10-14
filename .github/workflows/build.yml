@@ -546,7 +546,14 @@ jobs:
                 val s = surface ?: return
                 thread {
                     try {
-                        displayId = svc.createDisplay(vdW, vdH, dpi, s)
+                        displayId = svc.createDisplay(vdW, vdH, dpi, s）
+                                                runOnUiThread {
+                            val dm = getSystemService(android.hardware.display.DisplayManager::class.java)
+                            val vd = dm.getDisplay(displayId)
+                            android.app.AlertDialog.Builder(this)
+                                .setMessage("系统 SDK=${android.os.Build.VERSION.SDK_INT}\n真屏刷新率=${dm.getDisplay(0).supportedModes.map { it.refreshRate }}\n虚拟屏刷新率=${vd?.refreshRate}\n虚拟屏档位=${vd?.supportedModes?.map { it.refreshRate }}")
+                                .setPositiveButton("确定", null).show()
+                        }
                         if (!launched) {
                             launched = true
                             val out = svc.launch(pkg, displayId, forceStop)
