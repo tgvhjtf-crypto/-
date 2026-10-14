@@ -468,7 +468,7 @@ jobs:
             private var launched = false
 
             override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceStaate)
+                super.onCreate(savedInstanceState)
                                 pkg = intent.getStringExtra(EXTRA_PKG) ?: run { finish(); return }
                 vdW = intent.getIntExtra(EXTRA_W, vdW)
                 vdH = intent.getIntExtra(EXTRA_H, vdH)
