@@ -184,6 +184,18 @@ jobs:
                         .setPositiveButton("确定", null)
                         .show()
                 }
+                                try {
+                    val am = getSystemService(android.app.ActivityManager::class.java)
+                    val info = am.getHistoricalProcessExitReasons(packageName, 0, 1).firstOrNull()
+                    if (info != null && info.timestamp > crashPrefs.getLong("exitTs", 0L)) {
+                        crashPrefs.edit().putLong("exitTs", info.timestamp).apply()
+                        android.app.AlertDialog.Builder(this)
+                            .setTitle("上次退出原因")
+                            .setMessage("reason=${info.reason} status=${info.status}\n${info.description}")
+                            .setPositiveButton("确定", null)
+                            .show()
+                    }
+                } catch (_: Throwable) {}
                 val b = windowManager.currentWindowMetrics.bounds
                 shortSide = min(b.width(), b.height())
                 baseDpi = resources.displayMetrics.densityDpi
