@@ -811,7 +811,32 @@ jobs:
                 p.waitFor()
                 out.trim()
             } catch (t: Throwable) { "ERR: $t" }
-
+            /** Android 14+：请求高刷新率；失败返回 null，调用方会回退到普通创建方式 */
+            private fun createWithRefreshRate(
+                dm: DisplayManager, width: Int, height: Int, dpi: Int, surface: Surface?, flags: Int
+            ): VirtualDisplay? {
+                if (Build.VERSION.SDK_INT < 34) return null
+                return try {
+                    val rate = dm.getDisplay(0)?.refreshRate ?: return null
+                    if (rate <= 60.5f) return null
+                    val bCls = Class.forName("android.hardware.display.VirtualDisplayConfig\$Builder")
+                    val i = Int::class.javaPrimitiveType
+                    val b = bCls.getConstructor(String::class.java, i, i, i).newInstance("StretchBox", width, height, dpi)
+                    bCls.getMethod("setFlags", i).invoke(b, flags)
+                    bCls.getMethod("setSurface", Surface::class.java).invoke(b, surface)
+                    bCls.getMethod("setRequestedRefreshRate", Float::class.javaPrimitiveType).invoke(b, rate)
+                    val cfg = bCls.getMethod("build").invoke(b)
+                    val cfgCls = Class.forName("android.hardware.display.VirtualDisplayConfig")
+                    val m = DisplayManager::class.java.declaredMethods
+                        .filter { it.name == "createVirtualDisplay" && it.parameterTypes.any { p -> p == cfgCls } }
+                        .minByOrNull { it.parameterCount } ?: return null
+                    m.isAccessible = true
+                    val args = m.parameterTypes.map { if (it == cfgCls) cfg else null }.toTypedArray()
+                    m.invoke(dm, *args) as? VirtualDisplay
+                } catch (t: Throwable) {
+                    Log.e(TAG, "高刷新率创建失败，回退", t); null
+                }
+            }
             // ---------------- 虚拟屏 ----------------
 
             @Synchronized
@@ -829,7 +854,7 @@ jobs:
                     flags = flags or FLAG_TRUSTED or FLAG_OWN_DISPLAY_GROUP or FLAG_ALWAYS_UNLOCKED or FLAG_OWN_FOCUS
                 }
 
-                val d = dm.createVirtualDisplay("StretchBox", width, height, dpi, surface, flags)
+                val d = createWithRefreshRate(dm, width, height, dpi, surface, flags) ?: dm.createVirtualDisplay("StretchBox", width, height, dpi, surface, flags)
                     ?: throw IllegalStateException("createVirtualDisplay 返回 null")
                 vd = d
 
