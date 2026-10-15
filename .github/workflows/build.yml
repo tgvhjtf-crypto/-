@@ -526,6 +526,12 @@ jobs:
                 window.attributes = window.attributes.apply {
                     layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
                     preferredRefreshRate = display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f
+                val cur = display?.mode
+val best = display?.supportedModes
+    ?.filter { cur != null && it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight }
+    ?.maxByOrNull { it.refreshRate }
+if (best != null) preferredDisplayModeId = best.modeId
+                    
                 }
                 window.setDecorFitsSystemWindows(false)
                 window.decorView.windowInsetsController?.apply {
@@ -546,6 +552,12 @@ jobs:
                 val s = surface ?: return
                 thread {
                     try {
+                    val maxHz = display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f
+val t0 = System.currentTimeMillis()
+while (System.currentTimeMillis() - t0 < 3000 && (display?.refreshRate ?: 0f) < maxHz - 1f) {
+    Thread.sleep(100)
+}
+runOnUiThread { Toast.makeText(this, "创建虚拟屏前，真屏刷新率=${display?.refreshRate}Hz", Toast.LENGTH_LONG).show() }
                         displayId = svc.createDisplay(vdW, vdH, dpi, s)
                                                 runOnUiThread {
                             val dm = getSystemService(android.hardware.display.DisplayManager::class.java)
