@@ -546,7 +546,7 @@ jobs:
                 val s = surface ?: return
                 thread {
                     try {
-                        displayId = svc.createDisplay(vdW, vdH, dpi, s）
+                        displayId = svc.createDisplay(vdW, vdH, dpi, s)
                                                 runOnUiThread {
                             val dm = getSystemService(android.hardware.display.DisplayManager::class.java)
                             val vd = dm.getDisplay(displayId)
