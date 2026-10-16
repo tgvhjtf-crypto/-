@@ -105,7 +105,7 @@ jobs:
             void destroy() = 16777114;
 
             /** 创建（或复用）虚拟屏，画面输出到 surface，返回 displayId；失败抛异常 */
-            int createDisplay(int width, int height, int dpi, in Surface surface) = 1;
+            int createDisplay(int width, int height, float refreshRate, int dpi, in Surface surface) = 1;
             void resizeDisplay(int width, int height, int dpi) = 2;
             /** surface 可为 null（暂停输出） */
             void setSurface(in Surface surface) = 3;
@@ -156,7 +156,7 @@ jobs:
             private lateinit var etH: EditText
             private lateinit var etDpi: EditText
             private lateinit var cbForceStop: CheckBox
-
+            private lateinit var hzSpinner: Spinner
             private var apps: List<Pair<String, String>> = emptyList() // pkg to label
             private var shortSide = 1080
             private var baseDpi = 420
@@ -268,6 +268,13 @@ jobs:
 
                 cbForceStop = CheckBox(this).apply { text = "启动前强制停止该游戏（推荐，避免它留在主屏）"; isChecked = true }
                 root.addView(cbForceStop)
+                root.addView(label("虚拟屏帧率（请求值，0 = 自动跟随真屏）"))
+                hzSpinner = Spinner(this)
+                hzSpinner.adapter = ArrayAdapter(
+                    this, android.R.layout.simple_spinner_dropdown_item,
+                    listOf("自动（跟随真屏）", "120 Hz", "144 Hz")
+                )
+                root.addView(hzSpinner)
 
                 root.addView(Button(this).apply {
                     text = "进入容器并启动"; textSize = 16f
@@ -315,6 +322,10 @@ jobs:
                     etDpi.setText(prefs.getInt("dpi", baseDpi).toString())
                 } else applyPreset(16.0 / 9)
                 cbForceStop.isChecked = prefs.getBoolean("force", true)
+                                hzSpinner.setSelection(
+                    listOf(0, 120, 144).indexOf(prefs.getInt("hz", 0)).takeIf { it >= 0 } ?: 0
+                )
+
             }
 
             // ---------------- Shizuku 状态 ----------------
@@ -355,8 +366,10 @@ jobs:
                 if (w == null || h == null || dpi == null || w < 200 || h < 200 || pos < 0) {
                     Toast.makeText(this, "请填写有效的宽、高、DPI 并选择游戏", Toast.LENGTH_SHORT).show(); return
                 }
-                val pkg = apps[pos].first
+                                val pkg = apps[pos].first
+                val hz = listOf(0, 120, 144)[hzSpinner.selectedItemPosition.coerceIn(0, 2)]
                 prefs.edit().putString("pkg", pkg).putInt("w", w).putInt("h", h).putInt("dpi", dpi)
+                    .putInt("hz", hz)
                     .putBoolean("force", cbForceStop.isChecked).apply()
 
                 startActivity(Intent(this, StretchActivity::class.java).apply {
@@ -364,8 +377,10 @@ jobs:
                     putExtra(StretchActivity.EXTRA_W, w)
                     putExtra(StretchActivity.EXTRA_H, h)
                     putExtra(StretchActivity.EXTRA_DPI, dpi)
+                    putExtra(StretchActivity.EXTRA_HZ, hz)
                     putExtra(StretchActivity.EXTRA_FORCE_STOP, cbForceStop.isChecked)
                 })
+
             }
         }
         STRETCH_EOF
@@ -477,6 +492,7 @@ jobs:
                 const val EXTRA_W = "w"
                 const val EXTRA_H = "h"
                 const val EXTRA_DPI = "dpi"
+                const val EXTRA_HZ = "hz"
                 const val EXTRA_FORCE_STOP = "force"
             }
 
@@ -497,6 +513,8 @@ jobs:
                 vdW = intent.getIntExtra(EXTRA_W, vdW)
                 vdH = intent.getIntExtra(EXTRA_H, vdH)
                 dpi = intent.getIntExtra(EXTRA_DPI, dpi)
+                hz = intent.getIntExtra(EXTRA_HZ, 0)
+
                 forceStop = intent.getBooleanExtra(EXTRA_FORCE_STOP, true)
 
                 goImmersive()
@@ -558,7 +576,7 @@ jobs:
             Thread.sleep(100)
         }
         runOnUiThread { Toast.makeText(this, "创建虚拟屏前，真屏刷新率=${display?.refreshRate}Hz", Toast.LENGTH_LONG).show() }
-                        displayId = svc.createDisplay(vdW, vdH, dpi, s)
+                        displayId = svc.createDisplay(vdW, vdH, dpi, hz.toFloat(), s) 
                                                 runOnUiThread {
                             val dm = getSystemService(android.hardware.display.DisplayManager::class.java)
                             val vd = dm.getDisplay(displayId)
@@ -813,11 +831,11 @@ jobs:
             } catch (t: Throwable) { "ERR: $t" }
             /** Android 14+：请求高刷新率；失败返回 null，调用方会回退到普通创建方式 */
             private fun createWithRefreshRate(
-                dm: DisplayManager, width: Int, height: Int, dpi: Int, surface: Surface?, flags: Int
+                 dm: DisplayManager, width: Int, height: Int, dpi: Int, refreshRate: Float, surface: Surface?, flags: Int 
             ): VirtualDisplay? {
                 if (Build.VERSION.SDK_INT < 34) return null
                 return try {
-                    val rate = dm.getDisplay(0)?.refreshRate ?: return null
+                     val rate = if (refreshRate > 0f) refreshRate else (dm.getDisplay(0)?.refreshRate ?: return null) 
                     if (rate <= 60.5f) return null
                     val bCls = Class.forName("android.hardware.display.VirtualDisplayConfig\$Builder")
                     val i = Int::class.javaPrimitiveType
@@ -840,7 +858,7 @@ jobs:
             // ---------------- 虚拟屏 ----------------
 
             @Synchronized
-            override fun createDisplay(width: Int, height: Int, dpi: Int, surface: Surface?): Int {
+            override fun createDisplay(width: Int, height: Int, dpi: Int, refreshRate: Float, surface: Surface?): Int { 
                 vd?.let { // 已存在：复用，只换 Surface / 尺寸
                     it.surface = surface
                     it.resize(width, height, dpi)
@@ -854,7 +872,7 @@ jobs:
                     flags = flags or FLAG_TRUSTED or FLAG_OWN_DISPLAY_GROUP or FLAG_ALWAYS_UNLOCKED or FLAG_OWN_FOCUS
                 }
 
-                val d = createWithRefreshRate(dm, width, height, dpi, surface, flags) ?: dm.createVirtualDisplay("StretchBox", width, height, dpi, surface, flags)
+                val d =  createWithRefreshRate(dm, width, height, dpi, refreshRate, surface, flags)  ?: dm.createVirtualDisplay("StretchBox", width, height, dpi, surface, flags)
                     ?: throw IllegalStateException("createVirtualDisplay 返回 null")
                 vd = d
 
