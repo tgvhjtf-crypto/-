@@ -105,7 +105,7 @@ jobs:
             void destroy() = 16777114;
 
             /** 创建（或复用）虚拟屏，画面输出到 surface，返回 displayId；失败抛异常 */
-            int createDisplay(int width, int height, float refreshRate, int dpi, in Surface surface) = 1;
+            int createDisplay(int width, int height, int dpi, float refreshRate, in Surface surface) = 1;
             void resizeDisplay(int width, int height, int dpi) = 2;
             /** surface 可为 null（暂停输出） */
             void setSurface(in Surface surface) = 3;
@@ -501,8 +501,8 @@ jobs:
             private var vdW = 1920
             private var vdH = 1080
             private var dpi = 420
-            private var forceStop = true
-
+            private var hz = 0
+            private var forceStop = true   
             private var surface: Surface? = null
             @Volatile private var displayId = -1
             private var launched = false
@@ -858,7 +858,8 @@ jobs:
             // ---------------- 虚拟屏 ----------------
 
             @Synchronized
-            override fun createDisplay(width: Int, height: Int, dpi: Int, refreshRate: Float, surface: Surface?): Int { 
+            override fun createDisplay(width: Int, height: Int, dpi: Int, refreshRate: Float, surface: Surface?): Int {
+
                 vd?.let { // 已存在：复用，只换 Surface / 尺寸
                     it.surface = surface
                     it.resize(width, height, dpi)
