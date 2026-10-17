@@ -558,6 +558,7 @@ jobs:
                 goImmersive()
 
                 renderer = StretchRenderer(vdW, vdH) { s -> onOutputSurfaceReady(s) }
+                renderer.setFlip(if (gyroFix) 1f else 0f)
                 glView = GLSurfaceView(this).apply {
                     setEGLContextClientVersion(2)
                     preserveEGLContextOnPause = true
@@ -662,6 +663,7 @@ jobs:
                         ev.getPointerCoords(i, it)
                         it.x = it.x * sx
                         it.y = it.y * sy
+                        if (gyroFix) { it.x = vdW - it.x; it.y = vdH - it.y }   // 画面转了180°，触摸跟着镜像
                     }
                 }
                 val out = MotionEvent.obtain(
@@ -813,6 +815,7 @@ jobs:
             @Volatile private var contrast = 0f
             @Volatile private var saturation = 0f
             @Volatile private var warmth = 0f
+            @Volatile private var flip = 0f
 
             private val texMatrix = FloatArray(16)
             private val quad: FloatBuffer = newFloatBuffer(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
@@ -827,6 +830,9 @@ jobs:
             fun setColors(b: Float, c: Float, s: Float, w: Float) {
                 brightness = b; contrast = c; saturation = s; warmth = w
             }
+
+            /** 1f = 把输出画面旋转180°（陀螺仪修复模式用） */
+            fun setFlip(f: Float) { flip = f }
 
             override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
                 surfaceTexture?.release()
@@ -868,6 +874,7 @@ jobs:
                 GLES20.glUniform1f(GLES20.glGetUniformLocation(program, "uContrast"), contrast)
                 GLES20.glUniform1f(GLES20.glGetUniformLocation(program, "uSaturation"), saturation)
                 GLES20.glUniform1f(GLES20.glGetUniformLocation(program, "uWarmth"), warmth)
+                GLES20.glUniform1f(GLES20.glGetUniformLocation(program, "uFlip"), flip)
 
                 val aPos = GLES20.glGetAttribLocation(program, "aPos")
                 val aUV = GLES20.glGetAttribLocation(program, "aUV")
@@ -903,8 +910,9 @@ jobs:
         attribute vec4 aPos;
         attribute vec2 aUV;
         uniform mat4 uTexMatrix;
+        uniform float uFlip;
         varying vec2 vUV;
-        void main() { gl_Position = aPos; vUV = (uTexMatrix * vec4(aUV, 0.0, 1.0)).xy; }
+        void main() { gl_Position = uFlip > 0.5 ? -aPos : aPos; vUV = (uTexMatrix * vec4(aUV, 0.0, 1.0)).xy; }
         """
 
                 private const val FRAG = """
