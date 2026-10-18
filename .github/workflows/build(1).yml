@@ -1,10 +1,9 @@
-   
-   name: Build APK
-   on:
-   push:
-   workflow_dispatch:
-   jobs:
-   build:
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/setup-java@v4
@@ -1235,7 +1234,8 @@
         STRETCH_EOF
         
     - name: Prepare icon
-      run: |        cat > 'StretchBox/app/src/main/aidl/com/example/stretchbox/IStretchService.aidl' <<'STRETCH_EOF'
+      run: |  
+        cat > 'StretchBox/app/src/main/aidl/com/example/stretchbox/IStretchService.aidl' <<'STRETCH_EOF'
         package com.example.stretchbox;
 
         import android.view.Surface;
@@ -3015,7 +3015,7 @@
                 dpi = intent.getIntExtra(EXTRA_DPI, dpi)
                 hz = intent.getIntExtra(EXTRA_HZ, 0)
                 forceStop = intent.getBooleanExtra(EXTRA_FORCE_STOP, true)
-                showMenuBtn = intent.getBooleanExtra(EXTRA_SHOW_MENU, true)
+                showMenuBtn = false
                 gyroFix = intent.getBooleanExtra(EXTRA_GYRO_FIX, false)
 
                 for (i in 0..4) colorAdj[i] = prefs.getFloat("adj$i", 0f)
@@ -3134,6 +3134,7 @@
             // ---------------- 触摸转发 ----------------
 
             private fun forwardTouch(v: View, ev: MotionEvent) {
+                  if (ev.actionMasked == MotionEvent.ACTION_POINTER_DOWN && ev.pointerCount >= 5) { showMenu(); return }
                 val svc = ServiceClient.service ?: return
                 val id = displayId
                 if (id < 0 || v.width == 0 || v.height == 0) return
