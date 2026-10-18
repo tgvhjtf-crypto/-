@@ -7,6 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Check icon
+      run: |
+        pwd
+        ls -la
+        file icon.png
+    - uses: actions/checkout@v4
     - uses: actions/setup-java@v4
       with:
         distribution: temurin
