@@ -63,7 +63,7 @@ jobs:
             <application
                 android:allowBackup="false"
                 android:icon="@drawable/icon"
-                android:label="拉伸容器"
+                android:label="卡了游戏助手"
                 android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
                 <activity
@@ -244,7 +244,7 @@ jobs:
                     setPadding(dp(20), dp(40), dp(20), dp(24))
                 }
 
-                root.addView(TextView(this).apply { text = "拉伸容器"; textSize = 26f; setTypeface(typeface, Typeface.BOLD) })
+                root.addView(TextView(this).apply { text = "卡了游戏助手"; textSize = 26f; setTypeface(typeface, Typeface.BOLD) })
 
                 statusText = TextView(this).apply { setPadding(0, dp(12), 0, dp(4)) }
                 statusBtn = Button(this).apply { setOnClickListener { onStatusClick() } }
