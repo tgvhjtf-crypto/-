@@ -12,7 +12,6 @@ jobs:
         pwd
         ls -la
         file icon.png
-    - uses: actions/checkout@v4
     - uses: actions/setup-java@v4
       with:
         distribution: temurin
