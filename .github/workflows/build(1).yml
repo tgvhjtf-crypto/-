@@ -160,7 +160,10 @@ jobs:
             private lateinit var hzSpinner: Spinner
             private lateinit var cbShowMenu: CheckBox
             private lateinit var cbGyroFix: CheckBox
-
+            private lateinit var cbGyroInvert: CheckBox
+            private lateinit var cbFlipV: CheckBox
+            private lateinit var cbFlipH: CheckBox
+            private lateinit var cbGyroDiag: CheckBox
             private var apps: List<Pair<String, String>> = emptyList() // pkg to label
             private var shortSide = 1080
             private var longSide = 1920
@@ -282,20 +285,24 @@ jobs:
                     listOf("自动（跟随真屏）", "120 Hz", "144 Hz")
                 )
                 root.addView(hzSpinner)
-
                 cbShowMenu = CheckBox(this).apply { text = "容器内显示右上角菜单按钮"; isChecked = true }
-                root.addView(cbShowMenu)
-
                 cbGyroFix = CheckBox(this).apply { text = "陀螺仪修复模式（竖屏创建虚拟屏，修复轴错位）"; isChecked = prefs.getBoolean("gyroFix", false) }
                 root.addView(cbGyroFix)
-
+                cbGyroInvert = CheckBox(this).apply { text = "陀螺仪方向反转（修复后视角方向反了就勾选）" }
+                root.addView(cbGyroInvert)
+                cbFlipV = CheckBox(this).apply { text = "画面上下翻转（画面倒了就勾选）" }
+                root.addView(cbFlipV)
+                cbFlipH = CheckBox(this).apply { text = "画面左右翻转" }
+                root.addView(cbFlipH)
+                cbGyroDiag = CheckBox(this).apply { text = "启动后显示陀螺仪诊断窗口（调试用）" }
+                root.addView(cbGyroDiag)
                 root.addView(Button(this).apply {
                     text = "进入容器并启动"; textSize = 16f
                     setOnClickListener { start() }
                 }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)).apply { topMargin = dp(20) })
 
                 root.addView(TextView(this).apply {
-                    text = "提示：容器里点右上角半透明按钮可发送返回键或退出。"
+                text = "提示：容器里五指同时按下可打开菜单（返回键 / 画面调节 / 退出）。"
                     textSize = 12f; gravity = Gravity.START; setPadding(0, dp(12), 0, 0)
                 })
 
@@ -340,6 +347,10 @@ jobs:
                 )
                 cbShowMenu.isChecked = prefs.getBoolean("showMenu", true)
                 cbGyroFix.isChecked = prefs.getBoolean("gyroFix", false)
+                                cbGyroInvert.isChecked = prefs.getBoolean("gyroInvert", false)
+                cbFlipV.isChecked = prefs.getBoolean("flipV", false)
+                cbFlipH.isChecked = prefs.getBoolean("flipH", false)
+                cbGyroDiag.isChecked = prefs.getBoolean("gyroDiag", true)
             }
 
             // ---------------- Shizuku 状态 ----------------
@@ -386,6 +397,7 @@ jobs:
                     .putInt("hz", hz)
                     .putBoolean("showMenu", cbShowMenu.isChecked)
                     .putBoolean("gyroFix", cbGyroFix.isChecked)
+                    .putBoolean("gyroInvert", cbGyroInvert.isChecked).putBoolean("flipV", cbFlipV.isChecked).putBoolean("flipH", cbFlipH.isChecked).putBoolean("gyroDiag", cbGyroDiag.isChecked)
                     .putBoolean("force", cbForceStop.isChecked).apply()
 
                 startActivity(Intent(this, StretchActivity::class.java).apply {
@@ -3108,7 +3120,7 @@ jobs:
                                 if (out.contains("Error", true) || out.startsWith("ERR") || out.startsWith("找不到"))
                                     runOnUiThread { Toast.makeText(this, out, Toast.LENGTH_LONG).show() }
                             }
-                            if (gyroFix && first) {
+                                                        if (gyroFix && first && prefs.getBoolean("gyroDiag", true)) {
                                 Thread.sleep(2500)
                                 runOnUiThread { showGyroDiag() }
                             }
@@ -3170,6 +3182,7 @@ jobs:
                 add("上下翻转画面：" + (if (flipV) "开" else "关")) { flipV = !flipV; applyFlip() }
                 add("左右翻转画面：" + (if (flipH) "开" else "关")) { flipH = !flipH; applyFlip() }
                 if (gyroFix) {
+                                    add("查看陀螺仪诊断信息") { showGyroDiag() }
                     add("陀螺仪方向反转：" + (if (gyroInvert) "开" else "关") + "（视角方向反了就点这里）") {
                         gyroInvert = !gyroInvert
                         prefs.edit().putBoolean("gyroInvert", gyroInvert).apply()
