@@ -3134,6 +3134,15 @@ jobs:
             override fun onResume() {
                 super.onResume()
                 glView.onResume()   // GL 重建后会再给一个新 Surface，自动重新 attach
+                override fun onResume() {
+                super.onResume()
+                glView.onResume()   // GL 重建后会再给一个新 Surface，自动重新 attach
+                val s = outputSurface
+                if (s != null && displayId >= 0) {
+                    thread { try { ServiceClient.service?.setSurface(s) } catch (_: Throwable) {} }
+                    glView.requestRender()
+                }
+            }
             }
 
             override fun onPause() {
